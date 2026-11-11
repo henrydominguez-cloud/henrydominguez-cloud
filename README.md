@@ -1,64 +1,144 @@
 # Henry Domínguez Grullón
 
-**Cloud Infrastructure Engineer**
-GCP · OCI | Kubernetes · Terraform · CI/CD | DevOps & DevSecOps | Platform Engineering · SRE
-
+**Cloud Infrastructure Engineer** · GCP · OCI · Kubernetes · Terraform · CI/CD · DevSecOps
 Barcelona, Spain · Open to remote · [LinkedIn](https://www.linkedin.com/in/henry-cloud)
 
-## Profile
+---
 
-Ten years in systems and infrastructure, the last six in cloud and four designing and operating highly available multicloud platforms on GCP and Oracle Cloud Infrastructure. I am accountable for the reliability of a fintech/telecom platform serving millions of users across EMEA: multi-region Kubernetes, infrastructure as code, unified CI/CD and end-to-end observability.
+## In one minute
 
-**How I work:** everything that exists is described in code and versioned, deployments go through a pipeline and not through hands, security is applied in the pipeline rather than after it, and every incident ends in documentation that prevents the next one.
+- **What I do:** I keep a fintech/telecom platform reliable for millions of users across EMEA. Multi-region Kubernetes on GCP and OCI, infrastructure as code, GitOps-based CI/CD, observability end to end.
+- **How I think:** if it isn't in Git, it doesn't exist. If a human has to do it twice, it becomes code. If an alert has no clear action, it shouldn't page anyone.
+- **Where I'm going:** learning to build AI agents that improve operations workflows: triaging logs, answering questions from runbooks and automating routine tasks.
 
-## Selected work
+---
 
-| Area | What I did | Why it matters |
+## How I work, and why
+
+### Everything is code and versioned
+**Why:** Any environment can be rebuilt from the repository. Changes are reviewed, not remembered.  
+**In practice:** Terraform defines networking, clusters, reserved IPs and dual region; Ansible roles configure the servers. Rebuilding an environment means applying the repository, not following notes.  
+**Cost:** Slower first change. Faster every change after that.
+
+### Deploys go through a pipeline, never through hands
+**Why:** Same steps every time. No "it worked on my machine".  
+**In practice:** GitLab CI builds and publishes the image; ArgoCD syncs it into Kubernetes. Nobody runs `kubectl apply` against production.  
+**Cost:** The pipeline becomes critical. It needs the same care as production.
+
+### Security lives in the pipeline, not after it
+**Why:** The CI never holds cluster credentials, so a leaked CI token can't touch production.  
+**In practice:** ArgoCD pulls from Git inside the cluster, so GitLab CI never stores a kubeconfig; secrets stay outside the repository and RBAC follows least privilege.  
+**Cost:** One more moving part (GitOps) between build and deploy.
+
+### Every incident ends in documentation
+**Why:** Tacit knowledge leaves with people. Written procedure stays.  
+**In practice:** The fix becomes a runbook in Confluence, and any alert that fired without a clear action is changed or removed.  
+**Cost:** Time spent writing when the fire is already out.
+
+---
+
+## Decisions I've made, and what I'd tell you about them
+
+### Why two clouds instead of one?
+**Context:** compute and outbound traffic are the biggest cost on a voice platform.
+**Decision:** compute and egress run on **OCI**, where machines and data transfer cost materially less. Data and KPIs stay on **GCP**, because BigQuery and Looker already solve that as managed services. Small services go to Cloud Run instead of getting a cluster of their own.
+**How they connect:** direct peering where traffic is constant, VPN where only control signalling crosses. Pay for bandwidth only where it is used.
+**Trade-off:** two providers to operate, two IAM models, cross-cloud networking to maintain. Worth it because the saving is recurring and the complexity is one-off.
+
+### Why a shared release workflow?
+**Problem:** each service had its own way to release, so every process change had to be repeated service by service.  
+**Decision:** shared CI logic and a common **Helm** template, with layered configuration (chart → infrastructure → application) so each service tunes its own values.  
+**For the software teams:** they only touch their code, Dockerfile and `app.yml`, and launch deployments from a deploy console, without needing to know how the pipeline works inside.  
+**Checks before anything ships:** Gitleaks catches leaked passwords and tokens; syntax and lint checks catch broken configuration.  
+**Trade-off:** a shared standard means coupling, so it's the default path, not a rule forced on every service.  
+**Result:** the same checks on every release, one place to improve the process, and developers focused on their code.
+
+### Why GitLab CI builds but ArgoCD deploys?
+**Decision:** GitLab CI builds and publishes the image. **ArgoCD** pulls the change into the cluster.
+**Why:** the pipeline never stores production credentials. The cluster pulls; nobody pushes into it.
+**Trade-off:** two tools, and debugging a release sometimes means looking in both.
+
+### Why build infrastructure you can rebuild?
+**Decision:** Terraform describes networking, clusters, reserved IPs and dual region; Ansible roles configure the servers.  
+**Why:** any environment can be rebuilt from the repository, not from someone's memory.  
+**Detail that prevents outages:** booting machines through metadata (`startup-script`) stops Terraform from destroying and recreating a VM every time that script changes.
+
+### Why Prometheus *and* ELK?
+**Decision:** each kind of data in the tool built for it.
+- **Prometheus** watches Kubernetes state and fires alerts: how much, and when.
+- **ELK** handles raw data: application logs and call detail records (CDRs). **Logstash** filters and normalises before anything reaches BigQuery.
+
+**Why:** dumping raw data into the warehouse costs more and leaves it untidy.
+**Trade-off:** filters must be maintained as log formats change.
+
+### Why fewer alerts?
+**Decision:** an alert exists only if it has a defined response.
+**Why:** alert fatigue makes people ignore the alert that matters.
+**Trade-off:** each new alert needs design work up front.
+
+---
+
+## Tools: how I use them, and why that one
+
+| Tool | How I use it | Why this one |
 |---|---|---|
-| **Multicloud architecture** | Split the platform across two providers: compute and outbound traffic on OCI, data and KPIs on GCP (BigQuery, Looker, Cloud Run). Peering where traffic is constant, VPN where only control signalling crosses. | Lower cost without giving up capability |
-| **Unified CI/CD pipeline** (ongoing) | Central CI logic, a minimal dispatcher per repository, and one generic Helm chart replacing ~30 bespoke charts. GitLab CI builds and publishes; ArgoCD deploys. | One release procedure instead of thirty; the pipeline never stores production credentials |
-| **Modular Ansible + Terraform** (ongoing) | Server configuration as reusable pieces instead of one script per environment. Terraform describes networking, clusters, reserved IPs and dual region. | Changes stay contained; any environment can be rebuilt from the repository |
-| **Layered observability** | Prometheus for Kubernetes state and alerting; ELK for application logs and call detail records, with Logstash filtering and normalising before BigQuery. | Each kind of data in the right tool, at lower warehouse cost |
-| **Capacity and diagnostics** | Sized the voice platform (FreeSWITCH/Kamailio) against projected growth; HAProxy load balancing; Redis tuning (memory ceiling, eviction, persistence). | The system's limit is known before the peak arrives |
+| **Kubernetes** (GKE, OKE) | Multi-region workloads with HPA, Ingress, StatefulSets, RBAC | Same operating model on both clouds |
+| **Terraform** | Networking, clusters, reserved IPs, dual region | Declarative: describes what should exist, so drift is visible |
+| **Ansible** | Server configuration through composable roles | Agentless; fits machines Kubernetes doesn't run |
+| **GitLab CI + ArgoCD** | Build in CI, deploy through GitOps | Keeps production credentials out of the pipeline |
+| **Helm** | One shared chart template for all services; each service sets only its own values | Templates + layered values = standard without rigidity |
+| **Prometheus · Grafana** | Cluster state, alerting, dashboards | Pull model and PromQL suit Kubernetes metrics |
+| **ELK + BigQuery** | Logs and CDRs filtered by Logstash, analysed in BigQuery | Right tool per data type; lower warehouse cost |
+| **HAProxy · Redis** | Load balancing; Redis tuned for memory ceiling, eviction, persistence | Capacity found before the peak, not during it |
+| **LLMs** (Claude, Gemini, ChatGPT) | Automate repetitive tasks and improve team workflows: documentation, merge-request review, task automation | Less manual work, faster feedback |
 
-## Projects
+---
 
-Each repository documents the problem, the design decisions and the trade-offs.
+## Projects: why each repository exists
 
-| Repository | Description | Status |
-|---|---|---|
-| [ansible-lego](https://github.com/henrydominguez-cloud/ansible-lego) | Ansible roles built by composition: small, reusable pieces instead of one long playbook per environment. MIT. | Public |
-| homelab-iac | Proxmox homelab defined as code | In progress |
-| k3s-gitops | K3s cluster managed with GitOps | In progress |
-| llm-log-triage | LLM-assisted log triage | In progress |
-| ask-my-runbooks | Question answering over runbooks | In progress |
-| devops-orchestrator | Agent that coordinates operations tasks | In progress |
+### [ansible-lego](https://github.com/henrydominguez-cloud/ansible-lego) · Public · MIT
+**Why:** components like Java, Lua, FreeSWITCH or Kamailio get installed across many projects, sometimes clean, sometimes with project-specific config. One repo per project duplicates code and lets configs drift apart.  
+**How:** each component is a brick (an Ansible role). A project composes the bricks it needs and overrides only its own variables.  
+**Result:** one source per component, full control over what each service gets.  
+**Cost:** more variables to track, so documentation is part of the design.
 
-## Technical stack
+### [unified-deploy-pipeline](https://github.com/henrydominguez-cloud/unified-deploy-pipeline) · Public · v0.1.0
+**Why:** a generic, reusable version of the shared release workflow described above.  
+**How:** one central pipeline that triggers only the stages each component needs.  
+**Result:** runs from GitLab CI or GitHub Actions, with stages and logs in one place.
 
-| Area | Tools |
+### In progress
+
+| Repository | The question it answers |
 |---|---|
-| **Cloud** | GCP (GKE, Cloud Run, Pub/Sub, BigQuery, Looker) · OCI (OKE, VCN, registry) · AWS (EC2, VPC, S3, IAM, ECS/EKS, Lambda) |
-| **Containers** | Kubernetes · Docker · Helm · ArgoCD · RBAC · HPA · Ingress · StatefulSets |
-| **IaC & CI/CD** | Terraform · Ansible · GitLab CI/CD · GitHub Actions · Git · Jenkins |
-| **Observability** | Prometheus · PromQL · Grafana · ELK (Elasticsearch, Logstash, Kibana) |
-| **Networking** | VPC/VCN · routing & DNS · load balancing · HAProxy · TLS · VoIP/SIP |
-| **Security** | Least-privilege RBAC across clusters and clouds · CI holds no cluster credentials · secrets outside the repository · private endpoints, firewall rules, TLS |
-| **Data** | Redis · MySQL · PostgreSQL · BigQuery |
-| **Code & systems** | Python · Bash · Linux · VMware · Proxmox |
-| **Applied AI** | LLMs (Gemini, Claude, ChatGPT) for technical documentation, merge-request review and workflow automation |
+| homelab-iac | Can I rebuild my whole lab from a repository? |
+| k3s-gitops | What does GitOps look like end to end, outside a corporate setup? |
+| llm-log-triage | Can an LLM sort noisy logs so a human only reads what matters? |
+| ask-my-runbooks | Can runbooks answer questions instead of waiting to be read? |
+| devops-orchestrator | Can an agent coordinate routine ops tasks safely? |
+
+**Why public, and generic:** these are not copies of my day job. They use standard tools any team recognises, so you can read them, run them, and judge how I think.
+
+---
+
+## What I'm learning, and why
+
+| Topic | Why now | Where it shows |
+|---|---|---|
+| **AI agents for operations** | Most ops toil is reading, sorting and repeating. That is what agents do well. | `llm-log-triage`, `ask-my-runbooks`, `devops-orchestrator` |
+| **AWS** | Most of the market runs on it. My cloud fundamentals transfer; the service names change. | Labs in progress |
+
+---
 
 ## Experience
 
 | Period | Role | Company |
 |---|---|---|
 | Sep 2022 – Present | Cloud Infrastructure Engineer (EMEA) | fonYou, Barcelona |
-| Sep 2020 – Sep 2022 | Operations Technician | fonYou, Barcelona |
-| Dec 2019 – Sep 2020 | Technical Support Engineer, Google Cloud | Webhelp (now Concentrix), Barcelona |
-| 2015 – 2019 | IT Support Technician | Masoliver · Ajuntament d'Olot |
+| Sep 2020 – Sep 2022 | Operations Technician: observability with Grafana and ELK, incident prevention, KPIs for product owners | fonYou, Barcelona |
+| Dec 2019 – Sep 2020 | Technical Support Engineer, Google Cloud: diagnosis, customer workarounds, product feedback | Webhelp (now Concentrix) |
+| 2015 – 2019 | IT Support Technician: systems, VMware, networking | Masoliver · Ajuntament d'Olot |
 
 **Languages:** Spanish (native) · Catalan (professional) · English (professional)
 
-## Contact
-
-[linkedin.com/in/henry-cloud](https://www.linkedin.com/in/henry-cloud)
+**Let's talk:** [linkedin.com/in/henry-cloud](https://www.linkedin.com/in/henry-cloud). Ask me about any trade-off above.
