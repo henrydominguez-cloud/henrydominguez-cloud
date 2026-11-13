@@ -7,7 +7,7 @@ Barcelona, Spain · Open to remote · [LinkedIn](https://www.linkedin.com/in/hen
 
 ## In one minute
 
-- **What I do:** I keep a fintech/telecom platform reliable for millions of users across EMEA. Multi-region Kubernetes on GCP and OCI, infrastructure as code, GitOps-based CI/CD, observability end to end.
+- **What I do:** I keep a fintech/telecom platform with tens of millions of users across EMEA reliable: multi-cluster, multi-region Kubernetes on GCP and OCI, infrastructure as code, GitOps-based CI/CD, observability end to end.
 - **How I think:** if it isn't in Git, it doesn't exist. If a human has to do it twice, it becomes code. If an alert has no clear action, it shouldn't page anyone.
 - **Where I'm going:** learning to build AI agents that improve operations workflows: triaging logs, answering questions from runbooks and automating routine tasks.
 
