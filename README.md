@@ -1,6 +1,6 @@
 # Henry Domínguez Grullón
 
-**Cloud Infrastructure Engineer** · GCP · OCI · Kubernetes · Terraform · CI/CD · DevSecOps
+**Cloud Infrastructure Engineer** · GCP · OCI | Kubernetes · Terraform · CI/CD | DevOps & DevSecOps | Platform Engineering · SRE
 Barcelona, Spain · Open to remote · [LinkedIn](https://www.linkedin.com/in/henry-cloud)
 
 ---
@@ -48,7 +48,7 @@ Barcelona, Spain · Open to remote · [LinkedIn](https://www.linkedin.com/in/hen
 ### Why a shared release workflow?
 **Problem:** each service had its own way to release, so every process change had to be repeated service by service.  
 **Decision:** shared CI logic and a common **Helm** template, with layered configuration (chart → infrastructure → application) so each service tunes its own values.  
-**For the software teams:** they only touch their code, Dockerfile and `app.yml`, and launch deployments from a deploy console, without needing to know how the pipeline works inside.  
+**For the software teams:** they only touch their code, Dockerfile and `app.yaml`, and launch deployments from a deploy console, without needing to know how the pipeline works inside.  
 **Checks before anything ships:** Gitleaks catches leaked passwords and tokens; syntax and lint checks catch broken configuration.  
 **Trade-off:** a shared standard means coupling, so it's the default path, not a rule forced on every service.  
 **Result:** the same checks on every release, one place to improve the process, and developers focused on their code.
@@ -98,14 +98,14 @@ Barcelona, Spain · Open to remote · [LinkedIn](https://www.linkedin.com/in/hen
 
 ### [ansible-lego](https://github.com/henrydominguez-cloud/ansible-lego) · Public · MIT
 **Why:** components like Java, Lua, FreeSWITCH or Kamailio get installed across many projects, sometimes clean, sometimes with project-specific config. One repo per project duplicates code and lets configs drift apart.  
-**How:** each component is a brick (an Ansible role). A project composes the bricks it needs and overrides only its own variables.  
+**How:** three layers: bricks (one technology each, written once), services that compose them, and an inventory per project and environment. Examples ship with nginx and Postgres.  
 **Result:** one source per component, full control over what each service gets.  
 **Cost:** more variables to track, so documentation is part of the design.
 
 ### [unified-deploy-pipeline](https://github.com/henrydominguez-cloud/unified-deploy-pipeline) · Public · v0.1.0
-**Why:** a generic, reusable version of the shared release workflow described above.  
-**How:** one central pipeline that triggers only the stages each component needs.  
-**Result:** runs from GitLab CI or GitHub Actions, with stages and logs in one place.
+**Why:** the shared-pipeline idea from my day job, rebuilt as a generic, tested reference to fork.  
+**How:** every component calls one pipeline pinned by tag through a ~20-line dispatcher, with four modes (`full`, `config_only`, `deploy_image`, `rollback`) so a config change never costs a rebuild.  
+**Result:** 32 script tests and end-to-end checks on kind. The GitHub Actions adapter is self-tested; the GitLab CI adapter is written and linted.
 
 ### In progress
 
@@ -134,10 +134,10 @@ Barcelona, Spain · Open to remote · [LinkedIn](https://www.linkedin.com/in/hen
 
 | Period | Role | Company |
 |---|---|---|
-| Sep 2022 – Present | Cloud Infrastructure Engineer (EMEA) | fonYou, Barcelona |
-| Sep 2020 – Sep 2022 | Operations Technician: observability with Grafana and ELK, incident prevention, KPIs for product owners | fonYou, Barcelona |
-| Dec 2019 – Sep 2020 | Technical Support Engineer, Google Cloud: diagnosis, customer workarounds, product feedback | Webhelp (now Concentrix) |
-| 2015 – 2019 | IT Support Technician: systems, VMware, networking | Masoliver · Ajuntament d'Olot |
+| Sep 2022 — Present | Cloud Infrastructure Engineer (EMEA) | fonYou, Barcelona |
+| Sep 2020 — Sep 2022 | Operations Technician: observability with Grafana and ELK, incident prevention, KPIs for product owners | fonYou, Barcelona |
+| Dec 2019 — Sep 2020 | Technical Support Engineer, Google Cloud: diagnosis, customer workarounds, product feedback | Webhelp (now Concentrix) |
+| 2015 — 2019 | IT Support Technician: systems, VMware, networking | Masoliver · Ajuntament d'Olot |
 
 **Languages:** Spanish (native) · Catalan (professional) · English (professional)
 
